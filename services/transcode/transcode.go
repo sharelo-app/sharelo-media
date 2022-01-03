@@ -45,7 +45,7 @@ func VideoToMultiBitrates(fileUrl string, fileName string) string {
 	// 	log.Fatalf("Some error: %v\n", err)
 	// }
 	scale_configs := [...]ScaleConfig{
-		ScaleConfig{
+		{
 			dimention:         "360p",
 			width:             "640",
 			height:            "360",
@@ -54,7 +54,7 @@ func VideoToMultiBitrates(fileUrl string, fileName string) string {
 			bufsize:           "1200k",
 			a_target_bit_rate: "96k",
 		},
-		ScaleConfig{
+		{
 			dimention:         "480p",
 			width:             "842",
 			height:            "480",
@@ -63,7 +63,7 @@ func VideoToMultiBitrates(fileUrl string, fileName string) string {
 			bufsize:           "2100k",
 			a_target_bit_rate: "128k",
 		},
-		ScaleConfig{
+		{
 			dimention:         "720p",
 			width:             "1280",
 			height:            "720",
@@ -72,7 +72,7 @@ func VideoToMultiBitrates(fileUrl string, fileName string) string {
 			bufsize:           "4200k",
 			a_target_bit_rate: "128k",
 		},
-		ScaleConfig{
+		{
 			dimention:         "1080p",
 			width:             "1920",
 			height:            "1080",
@@ -194,7 +194,7 @@ func GenShortClip(fileUrl string, fileName string) string {
 }
 
 func GetVideoDuration(fileUrl string) string {
-	fmt.Println("Get the duration of the file: %s", fileUrl)
+	fmt.Printf("Get the duration of the file: %s", fileUrl)
 	cmd := exec.Command("ffprobe",
 		"-v",
 		"error",
