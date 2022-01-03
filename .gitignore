@@ -1,0 +1,16 @@
+# OS Files
+.DS_Store
+
+# VSCode project files
+.vscode
+*.code-workspace
+
+dist
+.vscode/settings.json
+
+vendor
+.idea
+.s3cfg
+docker/certs
+docker/data
+config.json
