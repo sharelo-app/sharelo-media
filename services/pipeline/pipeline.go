@@ -1,4 +1,4 @@
-package main
+package pipeline
 
 import (
 	"log"
@@ -6,7 +6,7 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func failOnError(err error, msg string) {
+func FailOnError(err error, msg string) {
 	if err != nil {
 		log.Fatalf("%s: %s", msg, err)
 	}
@@ -14,15 +14,13 @@ func failOnError(err error, msg string) {
 
 func InitAmqp() *amqp.Connection {
 	conn, err := amqp.Dial("amqp://shareloadmin:shareloadmin@localhost:5672/")
-	failOnError(err, "Failed to connect to RabbitMQ")
-	defer conn.Close()
+	FailOnError(err, "Failed to connect to RabbitMQ")
 	return conn
 }
 
 func DeclareSendCh(conn *amqp.Connection) (amqp.Queue, *amqp.Channel) {
 	ch, err := conn.Channel()
-	failOnError(err, "Failed to open a channel")
-	defer ch.Close()
+	FailOnError(err, "Failed to open a channel")
 	q, err := ch.QueueDeclare(
 		"transcoded_queue", // name
 		true,               // durable
@@ -31,13 +29,15 @@ func DeclareSendCh(conn *amqp.Connection) (amqp.Queue, *amqp.Channel) {
 		false,              // no-wait
 		nil,                // arguments
 	)
-	failOnError(err, "Failed to declare a queue")
+	FailOnError(err, "Failed to declare a queue")
 	return q, ch
 }
 
 func PublishAfterTranscoded(body []byte) {
 	conn := InitAmqp()
 	q, ch := DeclareSendCh(conn)
+	defer ch.Close()
+	defer conn.Close()
 	err := ch.Publish(
 		"",     // exchange
 		q.Name, // routing key
@@ -47,5 +47,5 @@ func PublishAfterTranscoded(body []byte) {
 			ContentType: "text/plain",
 			Body:        body,
 		})
-	failOnError(err, "Failed to publish a message")
+	FailOnError(err, "Failed to publish a message")
 }

@@ -14,7 +14,7 @@ func GetBaseRemotePath(userId string) string {
 	if err != nil {
 		log.Fatal("Unable to read the config file: ", err)
 	}
-	return "s3://" + config.WasabiConfig.Bucket + "/users/" + userId
+	return "http://127.0.0.1:9000/" + config.WasabiConfig.Bucket + "/users/" + userId
 }
 
 func GetStreamUrl(userId string, fileName string) string {

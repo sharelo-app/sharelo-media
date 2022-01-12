@@ -8,22 +8,32 @@ import (
 	"strconv"
 
 	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/sharelo-app/sharelo-media/services/pipeline"
 	"github.com/sharelo-app/sharelo-media/services/transcode"
 	"github.com/sharelo-app/sharelo-media/services/uploader"
 )
 
 type FileInfo struct {
-	UserId   string
-	Url      string
-	FileName string
+	UserId        string
+	VideoUploadId string
+	Url           string
+	FileName      string
 }
 
 type TranscodeInfo struct {
+	UserId        string `json:"user_id"`
+	VideoUploadId string `json:"video_upload_id"`
 	TranscodedUrl string `json:"transcoded_url"`
 	DownloadSize  string `json:"download_size"`
 	StreamUrl     string `json:"stream_url"`
 	PreviewUrl    string `json:"preview_url"`
 	Duration      string `json:"duration"`
+}
+
+func FailOnError(err error, msg string) {
+	if err != nil {
+		log.Fatalf("%s: %s", msg, err)
+	}
 }
 
 func GetFileSize(fileUrl string) (string, error) {
@@ -37,11 +47,11 @@ func GetFileSize(fileUrl string) (string, error) {
 
 func main() {
 	conn, err := amqp.Dial("amqp://shareloadmin:shareloadmin@localhost:5672/")
-	failOnError(err, "Failed to connect to RabbitMQ")
+	FailOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
 
 	ch, err := conn.Channel()
-	failOnError(err, "Failed to open a channel")
+	FailOnError(err, "Failed to open a channel")
 	defer ch.Close()
 
 	q, err := ch.QueueDeclare(
@@ -52,7 +62,7 @@ func main() {
 		false,                // no-wait
 		nil,                  // arguments
 	)
-	failOnError(err, "Failed to declare a queue")
+	FailOnError(err, "Failed to declare a queue")
 
 	msgs, err := ch.Consume(
 		q.Name, // queue
@@ -63,7 +73,7 @@ func main() {
 		false,  // no-wait
 		nil,    // args
 	)
-	failOnError(err, "Failed to register a consumer")
+	FailOnError(err, "Failed to register a consumer")
 
 	forever := make(chan bool)
 
@@ -77,7 +87,7 @@ func main() {
 			duration := transcode.GetVideoDuration(savedFileUrl)
 			size, err := GetFileSize(savedFileUrl)
 			if err != nil {
-				failOnError(err, "Failed to get file size")
+				FailOnError(err, "Failed to get file size")
 			}
 			fmt.Printf("converted: %s\n", savedFileUrl)
 			transcode.GenShortClip(savedFileUrl, fileInfo.FileName)
@@ -89,6 +99,8 @@ func main() {
 			transcodedUrl := uploader.GetTranscodedUrl(fileInfo.UserId, fileInfo.FileName)
 			previewUrl := uploader.GetPreviewUrl(fileInfo.UserId, fileInfo.FileName)
 			info := &TranscodeInfo{
+				UserId:        fileInfo.UserId,
+				VideoUploadId: fileInfo.VideoUploadId,
 				TranscodedUrl: transcodedUrl,
 				DownloadSize:  size,
 				StreamUrl:     streamUrl,
@@ -100,7 +112,7 @@ func main() {
 				fmt.Printf("Error: %s", err)
 				return
 			}
-			PublishAfterTranscoded(infoJson)
+			pipeline.PublishAfterTranscoded(infoJson)
 		}
 	}()
 

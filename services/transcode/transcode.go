@@ -202,10 +202,11 @@ func GetVideoDuration(fileUrl string) string {
 		"format=duration",
 		"-of",
 		"default=noprint_wrappers=1:nokey=1",
+		fileUrl,
 	)
 	dur, err := cmd.Output()
 	if err != nil {
-		log.Fatalf("Convert error: %v\n", err)
+		log.Fatalf("Failed to get duration: %v\n", err)
 	}
 	return string(dur)
 }
