@@ -1,8 +1,9 @@
 FROM golang:1.17
 WORKDIR /go/src/github.com/sharelo-app/sharelo-media
-COPY . .
+RUN apt-get update
+RUN apt-get install -y ffmpeg
+RUN apt-get install -y s3cmd
+COPY ./go.mod ./go.mod
 RUN go mod download
-RUN sudo apt-get update
-RUN sudo add-apt-repository ppa:jonathonf/ffmpeg-4
-RUN sudo apt install ffmpeg
-RUN sudo apt-get install s3cmd
+COPY . .
+CMD ["go", "run", "main/main.go"]

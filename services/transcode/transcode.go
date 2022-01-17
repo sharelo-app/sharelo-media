@@ -153,7 +153,7 @@ func ConvertToMp4(fileUrl string, fileName string) string {
 	}
 	// Should convert to 720p or 1080p
 	savedFileUrl := "/tmp/" + fileName + "/" + fileName + ".mp4"
-	fmt.Printf("Url: %s, FileName: %s\n", fileUrl, fileName)
+	fmt.Printf("Url: %s, FileName: %s\n, SavingUrl: %s\n", fileUrl, fileName, savedFileUrl)
 	cmd = exec.Command("ffmpeg",
 		"-i",
 		fileUrl,

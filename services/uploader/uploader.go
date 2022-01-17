@@ -14,7 +14,7 @@ func GetBaseRemotePath(userId string) string {
 	if err != nil {
 		log.Fatal("Unable to read the config file: ", err)
 	}
-	return "http://127.0.0.1:9000/" + config.WasabiConfig.Bucket + "/users/" + userId
+	return "http://localhost:9000/" + config.WasabiConfig.Bucket + "/users/" + userId
 }
 
 func GetStreamUrl(userId string, fileName string) string {
@@ -32,7 +32,7 @@ func GetPreviewUrl(userId string, fileName string) string {
 	return basePath + "/output/" + fileName + "/" + fileName + "_preview.mp4"
 }
 
-func UploadDir(userId string, fileName string) {
+func UploadDirAndRemove(userId string, fileName string) {
 	config, err := config.ReadConfigFile("")
 	if err != nil {
 		log.Fatal("Unable to read the config file: ", err)
@@ -55,7 +55,9 @@ func UploadDir(userId string, fileName string) {
 	if err != nil {
 		log.Fatalf("S3 start error: %v\n", err)
 	}
+
 	os.RemoveAll(fromDir)
+
 	// in := bufio.NewScanner(stdout)
 	// for in.Scan() {
 	// 	log.Printf(in.Text()) // write each line to your log, or anything you need

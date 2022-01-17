@@ -20,6 +20,11 @@ type FileInfo struct {
 	FileName      string
 }
 
+type FileMeta struct {
+	size     string
+	duration string
+}
+
 type TranscodeInfo struct {
 	UserId        string `json:"user_id"`
 	VideoUploadId string `json:"video_upload_id"`
@@ -43,6 +48,45 @@ func GetFileSize(fileUrl string) (string, error) {
 	}
 	inStr := strconv.FormatInt(fi.Size(), 10)
 	return inStr, nil
+}
+
+func getFileMeta(savedFileUrl string) FileMeta {
+	duration := transcode.GetVideoDuration(savedFileUrl)
+	size, err := GetFileSize(savedFileUrl)
+	if err != nil {
+		FailOnError(err, "Failed to get file size")
+	}
+	return FileMeta{
+		size:     size,
+		duration: duration,
+	}
+}
+
+func prepareFiles(savedFileUrl string, fileName string) {
+	transcode.GenShortClip(savedFileUrl, fileName)
+	transcode.VideoToMultiBitrates(savedFileUrl, fileName)
+	transcode.GenMasterPlaylist(fileName)
+}
+
+func sendFileInfoToQueue(fileInfo FileInfo, fileMeta FileMeta) {
+	streamUrl := uploader.GetStreamUrl(fileInfo.UserId, fileInfo.FileName)
+	transcodedUrl := uploader.GetTranscodedUrl(fileInfo.UserId, fileInfo.FileName)
+	previewUrl := uploader.GetPreviewUrl(fileInfo.UserId, fileInfo.FileName)
+	info := &TranscodeInfo{
+		UserId:        fileInfo.UserId,
+		VideoUploadId: fileInfo.VideoUploadId,
+		TranscodedUrl: transcodedUrl,
+		DownloadSize:  fileMeta.size,
+		StreamUrl:     streamUrl,
+		PreviewUrl:    previewUrl,
+		Duration:      fileMeta.duration,
+	}
+	infoJson, err := json.Marshal(info)
+	if err != nil {
+		fmt.Printf("Error: %s", err)
+		return
+	}
+	pipeline.PublishAfterTranscoded(infoJson)
 }
 
 func main() {
@@ -81,38 +125,23 @@ func main() {
 		for d := range msgs {
 			var fileInfo FileInfo
 			body := d.Body
+			// Method 1
 			json.Unmarshal(body, &fileInfo)
 			fmt.Printf("Url: %s, FileName: %s\n", fileInfo.Url, fileInfo.FileName)
 			savedFileUrl := transcode.ConvertToMp4(fileInfo.Url, fileInfo.FileName)
-			duration := transcode.GetVideoDuration(savedFileUrl)
-			size, err := GetFileSize(savedFileUrl)
-			if err != nil {
-				FailOnError(err, "Failed to get file size")
-			}
+
+			// Method 2
+			prepareFiles(savedFileUrl, fileInfo.FileName)
+
+			// Method 3
+			fileMeta := getFileMeta(savedFileUrl)
+
 			fmt.Printf("converted: %s\n", savedFileUrl)
-			transcode.GenShortClip(savedFileUrl, fileInfo.FileName)
-			transcode.VideoToMultiBitrates(savedFileUrl, fileInfo.FileName)
-			transcode.GenMasterPlaylist(fileInfo.FileName)
-			uploader.UploadDir(fileInfo.UserId, fileInfo.FileName)
+			uploader.UploadDirAndRemove(fileInfo.UserId, fileInfo.FileName)
 			fmt.Println("Finished")
-			streamUrl := uploader.GetStreamUrl(fileInfo.UserId, fileInfo.FileName)
-			transcodedUrl := uploader.GetTranscodedUrl(fileInfo.UserId, fileInfo.FileName)
-			previewUrl := uploader.GetPreviewUrl(fileInfo.UserId, fileInfo.FileName)
-			info := &TranscodeInfo{
-				UserId:        fileInfo.UserId,
-				VideoUploadId: fileInfo.VideoUploadId,
-				TranscodedUrl: transcodedUrl,
-				DownloadSize:  size,
-				StreamUrl:     streamUrl,
-				PreviewUrl:    previewUrl,
-				Duration:      duration,
-			}
-			infoJson, err := json.Marshal(info)
-			if err != nil {
-				fmt.Printf("Error: %s", err)
-				return
-			}
-			pipeline.PublishAfterTranscoded(infoJson)
+
+			// Method 4
+			sendFileInfoToQueue(fileInfo, fileMeta)
 		}
 	}()
 
